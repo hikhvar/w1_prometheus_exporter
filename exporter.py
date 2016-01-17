@@ -23,6 +23,7 @@ def read_command_arguments():
                         help="Export the internal CPU Temperature of the Raspberry Pi. Requires the vcgencmd.")
     return parser.parse_args()
 
+
 def find_sensors():
     ret = []
     for device in os.listdir(SENSOR_PATH):
