@@ -18,7 +18,6 @@ def read_command_arguments():
                         default=8001,
                         help="The port used to export the temperatures to prometheus.io. Default is 8001.")
     parser.add_argument("--internal",
-                        type=bool,
                         default=False,
                         action="store_true",
                         help="Export the internal CPU Temperature of the Raspberry Pi. Requires the vcgencmd.")

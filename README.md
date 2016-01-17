@@ -18,9 +18,22 @@ First checkout this git repository:
     cd w1_prometheus_exporter
 ```
 
+If you don't have pip install it via:
+
+```
+    sudo apt-get install python-pip
+```
+
+Then install the python prometheus client:
+
+```
+    sudo pip install prometheus_client
+```
+
 Then copy the exporter.py file to /opt/prometheus_temperature and the temperature_sensor.service to /etc/systemd/system:
 
 ```
+    sudo mkdir -p /opt/prometheus_temperature
     sudo cp exporter.py /opt/prometheus_temperature
     sudo cp temperature_sensor.service /etc/systemd/system
 ``` 
