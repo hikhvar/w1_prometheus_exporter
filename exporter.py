@@ -54,6 +54,12 @@ class Sensor (object):
             self.last_value = value
             return value
 
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return "Sensor ID: ", self.id
+
     def read_sensor(self):
         with open("%s/%s/w1_slave" % (SENSOR_PATH, self.id), "r") as sensor:
             crc = l = None
