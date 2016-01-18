@@ -49,7 +49,11 @@ def read_sensor(device):
             crc = sensor.readline() 
             l = sensor.readline()
             match = TEMP_REGEX.search(l)
-            return float(match.group(1))/1000
+            ret_val = float(match.group(1))/1000
+            if ret_val == 85:
+                raise Exception("Could not read sensor")
+            else:
+                return ret_val
         except:
             print "Ups something went wrong."
             if crc is not None:
