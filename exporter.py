@@ -58,7 +58,7 @@ class Sensor (object):
         return self.__str__()
 
     def __str__(self):
-        return "Sensor ID: ", self.id
+        return "Sensor ID: " + self.id
 
     def read_sensor(self):
         with open("%s/%s/w1_slave" % (SENSOR_PATH, self.id), "r") as sensor:
