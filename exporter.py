@@ -28,11 +28,10 @@ def find_sensors():
     ret = []
     for device in os.listdir(SENSOR_PATH):
         if "w1_bus_master" not in device:
-            try:
-                read_sensor(device)
-                ret.append(device)
-            except:
-                pass
+            sensor_under_test = Sensor(device)
+            test_value = sensor_under_test.read_sensor()
+            if test_value is not None:
+                ret.append(sensor_under_test)
     return ret
 
 
@@ -41,25 +40,41 @@ def get_callback(device):
         return read_sensor(device)
     return read
 
+class Sensor (object):
 
-def read_sensor(device):
-    with open("%s/%s/w1_slave" % (SENSOR_PATH, device), "r") as sensor:
-        crc = l = None
-        try:
-            crc = sensor.readline() 
-            l = sensor.readline()
-            match = TEMP_REGEX.search(l)
-            ret_val = float(match.group(1))/1000
-            if ret_val == 85:
-                raise Exception("Could not read sensor")
-            else:
-                return ret_val
-        except:
-            print "Ups something went wrong."
-            if crc is not None:
-                print "CRC Line: ", crc
-            if l is not None:
-                print "l Line: ", l
+    def __init__(self, id):
+        self.id = id
+        self.last_value = 0
+
+    def __call__(self, *args, **kwargs):
+        value = self.read_sensor()
+        if value is None:
+            return self.last_value
+        else:
+            self.last_value = value
+            return value
+
+    def read_sensor(self):
+        with open("%s/%s/w1_slave" % (SENSOR_PATH, self.id), "r") as sensor:
+            crc = l = None
+            try:
+                crc = sensor.readline()
+                if "YES" not in crc:
+                    raise Exception("Could not read sensor. Wrong CRC.")
+                l = sensor.readline()
+                match = TEMP_REGEX.search(l)
+                ret_val = float(match.group(1))/1000
+                if ret_val == 85:
+                    raise Exception("Could not read sensor. Return default value.")
+                else:
+                    return ret_val
+            except Exception, e:
+                print "Ups something went wrong.", e.message
+                if crc is not None:
+                    print "CRC Line: ", crc
+                if l is not None:
+                    print "l Line: ", l
+                return None
 
 
 def read_raspberry_pi_temperature():
@@ -73,7 +88,7 @@ def register_prometheus_gauges(export_internal_raspberry=False):
     sensors = find_sensors()
     print "Found sensors:", ", ".join(sensors)
     for sensor in sensors:
-        g.labels(sensor).set_function(get_callback(sensor))
+        g.labels(sensor).set_function(sensor)
     if export_internal_raspberry:
         g = Gauge("cpu_temperature_in_celsius", "CPU Temperature of the Raspberry Pi")
         g.set_function(read_raspberry_pi_temperature)
