@@ -92,9 +92,9 @@ def read_raspberry_pi_temperature():
 def register_prometheus_gauges(export_internal_raspberry=False):
     g = Gauge("sensor_temperature_in_celsius", "Local room temperature around the raspberry pi", ["sensor"])
     sensors = find_sensors()
-    print "Found sensors:", ", ".join(sensors)
+    print "Found sensors:", ", ".join(map(lambda x: str(x), sensors)
     for sensor in sensors:
-        g.labels(sensor).set_function(sensor)
+        g.labels(str(sensor)).set_function(sensor)
     if export_internal_raspberry:
         g = Gauge("cpu_temperature_in_celsius", "CPU Temperature of the Raspberry Pi")
         g.set_function(read_raspberry_pi_temperature)
