@@ -45,12 +45,17 @@ class Sensor (object):
     def __init__(self, id):
         self.id = id
         self.last_value = 0
+        self.miss_reads = 0
 
     def __call__(self, *args, **kwargs):
         value = self.read_sensor()
         if value is None:
+            self.miss_reads +=1
+            if self.miss_reads > 5:
+                return 85
             return self.last_value
         else:
+            self.miss_reads = 0
             self.last_value = value
             return value
 
