@@ -66,26 +66,30 @@ class Sensor (object):
         return self.id
 
     def read_sensor(self):
-        with open("%s/%s/w1_slave" % (SENSOR_PATH, self.id), "r") as sensor:
-            crc = l = None
-            try:
-                crc = sensor.readline()
-                if "YES" not in crc:
-                    raise Exception("Could not read sensor. Wrong CRC.")
-                l = sensor.readline()
-                match = TEMP_REGEX.search(l)
-                ret_val = float(match.group(1))/1000
-                if ret_val == 85:
-                    raise Exception("Could not read sensor. Return default value.")
-                else:
-                    return ret_val
-            except Exception, e:
-                print "Ups something went wrong.", e.message
-                if crc is not None:
-                    print "CRC Line: ", crc
-                if l is not None:
-                    print "l Line: ", l
-                return None
+        try:
+            with open("%s/%s/w1_slave" % (SENSOR_PATH, self.id), "r") as sensor:
+                crc = l = None
+                try:
+                    crc = sensor.readline()
+                    if "YES" not in crc:
+                        raise Exception("Could not read sensor. Wrong CRC.")
+                    l = sensor.readline()
+                    match = TEMP_REGEX.search(l)
+                    ret_val = float(match.group(1))/1000
+                    if ret_val == 85:
+                        raise Exception("Could not read sensor. Return default value.")
+                    else:
+                        return ret_val
+                except Exception, e:
+                    print self.id, "Ups something went wrong.", e.message
+                    if crc is not None:
+                        print "CRC Line: ", crc
+                    if l is not None:
+                        print "l Line: ", l
+                    return None
+        except IOError, e:
+            print e.message
+            return None
 
 
 def read_raspberry_pi_temperature():
