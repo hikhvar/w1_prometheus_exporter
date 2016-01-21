@@ -46,6 +46,19 @@ class Sensor (object):
         self.id = id
         self.last_value = 0
         self.miss_reads = 0
+        self.error_gauge = None
+
+    def set_error_gauge(self, gauge):
+        self.error_gauge = gauge
+        self.unset_missread()
+
+    def set_missread(self):
+        if self.error_gauge is not None:
+            self.error_gauge.set(1)
+
+    def unset_missread(self):
+        if self.error_gauge is not None:
+            self.error_gauge.set(0)
 
     def __call__(self, *args, **kwargs):
         value = self.read_sensor()
@@ -77,8 +90,9 @@ class Sensor (object):
                     match = TEMP_REGEX.search(l)
                     ret_val = float(match.group(1))/1000
                     if ret_val == 85:
-                        raise Exception("Could not read sensor. Return default value.")
+                        raise Exception("Could not read sensor. Sensor returned default value.")
                     else:
+                        self.unset_missread()
                         return ret_val
                 except Exception, e:
                     print self.id, "Ups something went wrong.", e.message
@@ -86,9 +100,11 @@ class Sensor (object):
                         print "CRC Line: ", crc
                     if l is not None:
                         print "l Line: ", l
+                    self.set_missread()
                     return None
         except IOError, e:
             print e.message
+            self.set_missread()
             return None
 
 
@@ -100,10 +116,12 @@ def read_raspberry_pi_temperature():
 
 def register_prometheus_gauges(export_internal_raspberry=False):
     g = Gauge("sensor_temperature_in_celsius", "Local room temperature around the raspberry pi", ["sensor"])
+    error_g = Gauge("faulty_sensor_read", "Is 1 if the sensor could not be read.", ["sensor"])
     sensors = find_sensors()
     print "Found sensors:", ", ".join(map(lambda x: str(x), sensors))
     for sensor in sensors:
         g.labels(str(sensor)).set_function(sensor)
+        sensor.set_error_gauge(error_g.labels(str(sensor)))
     if export_internal_raspberry:
         g = Gauge("cpu_temperature_in_celsius", "CPU Temperature of the Raspberry Pi")
         g.set_function(read_raspberry_pi_temperature)
