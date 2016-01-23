@@ -21,6 +21,11 @@ def read_command_arguments():
                         default=False,
                         action="store_true",
                         help="Export the internal CPU Temperature of the Raspberry Pi. Requires the vcgencmd.")
+    parser.add_argument("--rediscover",
+                        default=600,
+                        type=int,
+                        metavar="REDISCOVER",
+                        help="Seconds between two sensor discovery runs.")
     return parser.parse_args()
 
 
@@ -34,11 +39,6 @@ def find_sensors():
                 ret.append(sensor_under_test)
     return ret
 
-
-def get_callback(device):
-    def read():
-        return read_sensor(device)
-    return read
 
 class Sensor (object):
 
@@ -113,24 +113,29 @@ def read_raspberry_pi_temperature():
     match = INTERNAL_TEMP_REGEX.search(p.stdout.read())
     return float(match.group(1))
 
+def register_new_sensors(new_sensors, old_sensors, gauge, error_gauge):
+    for sensor in new_sensors:
+        if sensor not in old_sensors:
+            gauge.labels(str(sensor)).set_function(sensor)
+            sensor.set_error_gauge(error_gauge.labels(str(sensor)))
 
 def register_prometheus_gauges(export_internal_raspberry=False):
-    g = Gauge("sensor_temperature_in_celsius", "Local room temperature around the raspberry pi", ["sensor"])
-    error_g = Gauge("faulty_sensor_read", "Is 1 if the sensor could not be read.", ["sensor"])
-    sensors = find_sensors()
-    print "Found sensors:", ", ".join(map(lambda x: str(x), sensors))
-    for sensor in sensors:
-        g.labels(str(sensor)).set_function(sensor)
-        sensor.set_error_gauge(error_g.labels(str(sensor)))
+    gauge = Gauge("sensor_temperature_in_celsius", "Local room temperature around the raspberry pi", ["sensor"])
+    error_gauge = Gauge("faulty_sensor_read", "Is 1 if the sensor could not be read.", ["sensor"])
     if export_internal_raspberry:
         g = Gauge("cpu_temperature_in_celsius", "CPU Temperature of the Raspberry Pi")
         g.set_function(read_raspberry_pi_temperature)
-    return sensors
+    return gauge, error_gauge
 
 
 if __name__ == "__main__":
     args = read_command_arguments()
     start_http_server(args.port)
-    register_prometheus_gauges(args.internal)
+    gauge, error_gauge = register_prometheus_gauges(args.internal)
+    sensors = set(find_sensors())
+    register_new_sensors(sensors,set([]), gauge, error_gauge)
     while True:
-        time.sleep(10000)
+        time.sleep(args.rediscover)
+        new_sensors = set(find_sensors())
+        register_new_sensors(new_sensors, sensors, gauge, error_gauge)
+        sensors = sensors.union(new_sensors)
