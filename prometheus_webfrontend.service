@@ -1,0 +1,9 @@
+[Unit]
+Description=Web frontend displaying current temperature
+After=prometheus.service
+
+[Service]
+ExecStart=/usr/bin/python /opt/prometheus_temperature/prometheus_temperatur_frontend.py
+
+[Install]
+WantedBy=multi-user.target
