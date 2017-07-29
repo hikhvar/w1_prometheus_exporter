@@ -8,7 +8,8 @@ import argparse
 TEMP_REGEX = re.compile('t=([0-9]+)')
 INTERNAL_TEMP_REGEX = re.compile('temp=([0-9]+\.[0-9])')
 SENSOR_PATH = "/sys/bus/w1/devices"
-
+CRC_ERROR="Could not read sensor. Wrong CRC."
+DEFAULT_VALUE_ERROR="Could not read sensor. Sensor returned default value."
 
 def read_command_arguments():
     parser = argparse.ArgumentParser(description="Exporter of connected 1-Wire Sensors to Prometheus.io monitoring.")
@@ -29,8 +30,8 @@ def find_sensors():
     for device in os.listdir(SENSOR_PATH):
         if "w1_bus_master" not in device:
             sensor_under_test = Sensor(device)
-            test_value = sensor_under_test.read_sensor()
-            if test_value is not None:
+            test_value, error = sensor_under_test.read_sensor()
+            if test_value is not None or ( error == CRC_ERROR or error == DEFAULT_VALUE_ERROR):
                 ret.append(sensor_under_test)
     return ret
 
@@ -61,7 +62,7 @@ class Sensor (object):
             self.error_gauge.set(0)
 
     def __call__(self, *args, **kwargs):
-        value = self.read_sensor()
+        value, _ = self.read_sensor()
         if value is None:
             self.miss_reads +=1
             if self.miss_reads > 5:
@@ -85,15 +86,15 @@ class Sensor (object):
                 try:
                     crc = sensor.readline()
                     if "YES" not in crc:
-                        raise Exception("Could not read sensor. Wrong CRC.")
+                        raise Exception(CRC_ERROR)
                     l = sensor.readline()
                     match = TEMP_REGEX.search(l)
                     ret_val = float(match.group(1))/1000
                     if ret_val == 85:
-                        raise Exception("Could not read sensor. Sensor returned default value.")
+                        raise Exception(DEFAULT_VALUE_ERROR)
                     else:
                         self.unset_missread()
-                        return ret_val
+                        return ret_val, ""
                 except Exception, e:
                     print self.id, "Ups something went wrong.", e.message
                     if crc is not None:
@@ -101,11 +102,11 @@ class Sensor (object):
                     if l is not None:
                         print "l Line: ", l
                     self.set_missread()
-                    return None
+                    return None, e.message
         except IOError, e:
             print e.message
             self.set_missread()
-            return None
+            return None, e.message
 
 
 def read_raspberry_pi_temperature():
