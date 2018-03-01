@@ -5,7 +5,7 @@ import os
 import subprocess
 import argparse
 
-TEMP_REGEX = re.compile('t=([0-9]+)')
+TEMP_REGEX = re.compile('t=-?([0-9]+)')
 INTERNAL_TEMP_REGEX = re.compile('temp=([0-9]+\.[0-9])')
 SENSOR_PATH = "/sys/bus/w1/devices"
 CRC_ERROR="Could not read sensor. Wrong CRC."
